@@ -2,66 +2,111 @@ const express = require("express");
 const mysql = require("mysql");
 const bcrypt = require("bcryptjs");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 const path = require("path");
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// **Serve Static Files (HTML, CSS, JS)**
+// Serve static files
 app.use(express.static(path.join(__dirname)));
 
-// **Database Connection**
+// Database connection
 const db = mysql.createConnection({
     host: "localhost",
     user: "root",
-    password: "Mohan2003.", 
+    password: "Mohan2003.",
     database: "userAuth"
 });
 
-db.connect((err) => {
-    if (err) {
-        console.error("Database connection failed:", err);
-    } else {
-        console.log("Connected to MySQL Database");
+db.connect(err => {
+    if (err) throw err;
+    console.log("Connected to MySQL Database");
+});
+
+// Signup route
+app.post("/signup", async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        
+        // Check if user exists
+        db.query("SELECT * FROM users WHERE email = ?", [email], async (err, results) => {
+            if (err) throw err;
+            
+            if (results.length > 0) {
+                return res.status(400).json({ 
+                    success: false,
+                    message: "User already exists!" 
+                });
+            }
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+            db.query(
+                "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
+                [username, email, hashedPassword],
+                (err) => {
+                    if (err) throw err;
+                    res.json({ 
+                        success: true,
+                        message: "Signup successful!",
+                        redirect: "/login.html"
+                    });
+                }
+            );
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ 
+            success: false,
+            message: "Server error during signup" 
+        });
     }
 });
 
-// **Signup Route**
-app.post("/signup", async (req, res) => {
-    const { username, email, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
+// Login route
+app.post("/login", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        db.query("SELECT * FROM users WHERE email = ?", [email], async (err, results) => {
+            if (err) throw err;
+            
+            if (results.length === 0) {
+                return res.status(401).json({ 
+                    success: false,
+                    message: "User not found!" 
+                });
+            }
 
-    const sql = "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
-    db.query(sql, [username, email, hashedPassword], (err, result) => {
-        if (err) {
-            return res.status(500).json({ message: "User already exists!" });
-        }
-        res.redirect("/login.html");
-    });
+            const user = results[0];
+            const isMatch = await bcrypt.compare(password, user.password);
+            
+            if (!isMatch) {
+                return res.status(401).json({ 
+                    success: false,
+                    message: "Incorrect password!" 
+                });
+            }
+
+            res.json({ 
+                success: true,
+                message: "Login successful!",
+                redirect: "/index.html",
+                user: { id: user.id, username: user.username }
+            });
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ 
+            success: false,
+            message: "Server error during login" 
+        });
+    }
 });
 
-// **Login Route**
-app.post("/login", (req, res) => {
-    const { email, password } = req.body;
-
-    const sql = "SELECT * FROM users WHERE email = ?";
-    db.query(sql, [email], async (err, result) => {
-        if (err) {
-            return res.status(500).json({ message: "Database error: " + err });
-        }
-        if (result.length === 0) {
-            return res.status(401).json({ message: "User not found!" });
-        }
-
-        const user = result[0];
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({ message: "Incorrect password!" });
-        }
-
-        res.status(200).json({ message: "Login successful!", redirect: "/index.html" });
-    });
+// Start server
+const PORT = 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
 });

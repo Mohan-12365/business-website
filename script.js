@@ -1,38 +1,66 @@
+// Signup form handler
+document.getElementById("signupForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = {
+        username: form.username.value,
+        email: form.email.value,
+        password: form.password.value
+    };
 
-document.getElementById("signupForm")?.addEventListener("submit", async function(event) {
-    event.preventDefault();
-
-    const username = document.querySelector("input[name='username']").value;
-    const email = document.querySelector("input[name='email']").value;
-    const password = document.querySelector("input[name='password']").value;
-
-    const response = await fetch("/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password })
-    });
-
-    const data = await response.json();
-    alert(data.message);
+    try {
+        const response = await fetch("http://localhost:3000/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || "Signup failed");
+        }
+        
+        alert(data.message);
+        if (data.redirect) {
+            window.location.href = data.redirect;
+        }
+    } catch (error) {
+        console.error("Signup Error:", error);
+        alert(error.message || "Cannot connect to server");
+    }
 });
 
-document.getElementById("loginForm")?.addEventListener("submit", async function(event) {
-    event.preventDefault();
+// Login form handler
+document.getElementById("loginForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = {
+        email: form.email.value,
+        password: form.password.value
+    };
 
-    const email = document.querySelector("input[name='email']").value;
-    const password = document.querySelector("input[name='password']").value;
-
-    const response = await fetch("/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-    });
-
-    const data = await response.json();
-    alert(data.message);
-
-    // ✅ Fix: Redirect to index.html after successful login
-    if (response.status === 200) {
-        window.location.href = data.redirect;
+    try {
+        const response = await fetch("http://localhost:3000/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || "Login failed");
+        }
+        
+        alert(data.message);
+        if (data.redirect) {
+            window.location.href = data.redirect;
+        }
+    } catch (error) {
+        console.error("Login Error:", error);
+        alert(error.message || "Cannot connect to server");
     }
 });
