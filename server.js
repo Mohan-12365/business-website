@@ -49,27 +49,19 @@ app.post("/login", (req, res) => {
 
     const sql = "SELECT * FROM users WHERE email = ?";
     db.query(sql, [email], async (err, result) => {
-        if (err || result.length === 0) {
+        if (err) {
+            return res.status(500).json({ message: "Database error: " + err });
+        }
+        if (result.length === 0) {
             return res.status(401).json({ message: "User not found!" });
         }
 
         const user = result[0];
         const isMatch = await bcrypt.compare(password, user.password);
-
         if (!isMatch) {
             return res.status(401).json({ message: "Incorrect password!" });
         }
 
         res.status(200).json({ message: "Login successful!", redirect: "/index.html" });
     });
-});
-
-// **Serve index.html by default**
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "index.html"));
-});
-
-const PORT = 5000;
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
 });
